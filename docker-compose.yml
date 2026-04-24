@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: studio-reservation-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: studio
+      POSTGRES_PASSWORD: studio
+      POSTGRES_DB: studio_reservation
+    ports:
+      - "5434:5432"
+    volumes:
+      - studio_pgdata:/var/lib/postgresql/data
+
+volumes:
+  studio_pgdata:
