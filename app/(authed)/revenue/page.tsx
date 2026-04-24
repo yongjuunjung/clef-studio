@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -113,18 +114,18 @@ export default async function RevenuePage({
           </div>
           <div className="flex items-center gap-1">
             <Link href={monthHref(prevYear, prevMonth)}>
-              <Button size="sm" variant="outline">
-                ‹
+              <Button size="icon" variant="outline" className="h-8 w-8">
+                <ChevronLeft className="h-4 w-4" />
               </Button>
             </Link>
             <Link href="/revenue">
-              <Button size="sm" variant="outline">
+              <Button size="sm" variant="outline" className="h-8">
                 이번 달
               </Button>
             </Link>
             <Link href={monthHref(nextYear, nextMonth)}>
-              <Button size="sm" variant="outline">
-                ›
+              <Button size="icon" variant="outline" className="h-8 w-8">
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </Link>
           </div>
@@ -173,12 +174,13 @@ export default async function RevenuePage({
         <CardHeader>
           <CardTitle className="text-base">플랫폼별</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 sm:p-6 sm:pt-0">
           {byPlatform.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">
               이 달에 예약 내역이 없습니다.
             </p>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -235,12 +237,13 @@ export default async function RevenuePage({
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between flex-wrap gap-3">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
             <CardTitle className="text-base">예약 내역</CardTitle>
             <CardDescription>
@@ -279,13 +282,14 @@ export default async function RevenuePage({
             </div>
           </form>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 sm:p-6 sm:pt-0">
           {rows.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
-              조건에 맞는 예약이 없습니다.
+              조건에 맞는 예약이 없습니다
             </p>
           ) : (
             <>
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -378,8 +382,9 @@ export default async function RevenuePage({
                   })}
                 </TableBody>
               </Table>
+              </div>
               {totalPages > 1 ? (
-                <div className="mt-4">
+                <div className="p-4 border-t sm:border-t-0 sm:p-0 sm:mt-4">
                   <Pagination
                     currentPage={page}
                     totalPages={totalPages}

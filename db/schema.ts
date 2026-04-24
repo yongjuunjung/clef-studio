@@ -10,7 +10,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
-export const platforms = pgTable("platforms", {
+export const platforms = pgTable("clef_platforms", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 100 }).notNull(),
   commissionRatePct: real("commission_rate_pct").notNull().default(0),
@@ -23,7 +23,7 @@ export const platforms = pgTable("platforms", {
     .defaultNow(),
 });
 
-export const reservations = pgTable("reservations", {
+export const reservations = pgTable("clef_reservations", {
   id: serial("id").primaryKey(),
   customerName: varchar("customer_name", { length: 100 }).notNull(),
   customerPhone: varchar("customer_phone", { length: 30 }),
@@ -56,15 +56,18 @@ export const reservations = pgTable("reservations", {
     .defaultNow(),
 });
 
-export const reservationPeopleSegments = pgTable("reservation_people_segments", {
-  id: serial("id").primaryKey(),
-  reservationId: integer("reservation_id")
-    .notNull()
-    .references(() => reservations.id, { onDelete: "cascade" }),
-  startAt: timestamp("start_at", { withTimezone: true, mode: "date" }).notNull(),
-  endAt: timestamp("end_at", { withTimezone: true, mode: "date" }).notNull(),
-  peopleCount: integer("people_count").notNull(),
-});
+export const reservationPeopleSegments = pgTable(
+  "clef_reservation_people_segments",
+  {
+    id: serial("id").primaryKey(),
+    reservationId: integer("reservation_id")
+      .notNull()
+      .references(() => reservations.id, { onDelete: "cascade" }),
+    startAt: timestamp("start_at", { withTimezone: true, mode: "date" }).notNull(),
+    endAt: timestamp("end_at", { withTimezone: true, mode: "date" }).notNull(),
+    peopleCount: integer("people_count").notNull(),
+  },
+);
 
 export const reservationsRelations = relations(reservations, ({ many, one }) => ({
   peopleSegments: many(reservationPeopleSegments),
@@ -84,7 +87,7 @@ export const segmentsRelations = relations(
   }),
 );
 
-export const settings = pgTable("settings", {
+export const settings = pgTable("clef_settings", {
   id: integer("id").primaryKey().default(1),
   dayHourlyRate: integer("day_hourly_rate").notNull().default(0),
   nightHourlyRate: integer("night_hourly_rate").notNull().default(0),

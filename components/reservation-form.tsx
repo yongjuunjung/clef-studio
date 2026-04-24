@@ -575,46 +575,58 @@ function SegmentRow({
   );
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2 flex-wrap">
-      <div className="flex items-center gap-2 shrink-0">
-        <Input
-          type="time"
-          step={3600}
-          value={segment.startTime}
-          onChange={(e) => onChange({ startTime: e.target.value })}
-          readOnly={Boolean(startTimeLocked)}
-          className="w-[9.5rem]"
-        />
-        <span className="text-muted-foreground">~</span>
-        <Input
-          type="time"
-          step={3600}
-          value={segment.endTime}
-          onChange={(e) => onChange({ endTime: e.target.value })}
-          readOnly={Boolean(endTimeLocked)}
-          className="w-[9.5rem]"
-        />
-      </div>
+    <div className="px-3 py-3 space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 shrink-0">
+          <Input
+            type="time"
+            step={3600}
+            value={segment.startTime}
+            onChange={(e) => onChange({ startTime: e.target.value })}
+            readOnly={Boolean(startTimeLocked)}
+            className="w-[9.5rem]"
+          />
+          <span className="text-muted-foreground">~</span>
+          <Input
+            type="time"
+            step={3600}
+            value={segment.endTime}
+            onChange={(e) => onChange({ endTime: e.target.value })}
+            readOnly={Boolean(endTimeLocked)}
+            className="w-[9.5rem]"
+          />
+        </div>
 
-      <div className="flex items-center gap-1 shrink-0">
-        <Input
-          type="number"
-          min={1}
-          value={segment.people}
-          onChange={(e) => onChange({ people: Number(e.target.value) || 0 })}
-          className="w-24"
-        />
-        <span className="text-sm text-muted-foreground whitespace-nowrap">
-          명
-        </span>
-      </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <Input
+            type="number"
+            min={1}
+            value={segment.people}
+            onChange={(e) => onChange({ people: Number(e.target.value) || 0 })}
+            className="w-24"
+          />
+          <span className="text-sm text-muted-foreground whitespace-nowrap">
+            명
+          </span>
+        </div>
 
-      <div className="flex items-center gap-1 shrink-0">
-        {dayMin > 0 ? (
-          <Badge
-            variant="secondary"
-            className="text-[10px] whitespace-nowrap"
+        {canRemove ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onRemove}
+            aria-label={`구간 ${index + 1} 삭제`}
+            className="ml-auto h-8 w-8 shrink-0"
           >
+            ×
+          </Button>
+        ) : null}
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap text-xs">
+        {dayMin > 0 ? (
+          <Badge variant="secondary" className="text-[10px] whitespace-nowrap">
             주간 {(dayMin / 60).toFixed(dayMin % 60 === 0 ? 0 : 1)}h
           </Badge>
         ) : null}
@@ -623,25 +635,11 @@ function SegmentRow({
             야간 {(nightMin / 60).toFixed(nightMin % 60 === 0 ? 0 : 1)}h
           </Badge>
         ) : null}
-      </div>
-
-      <div className="ml-auto flex items-center gap-2 shrink-0">
-        <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">
+        <span className="ml-auto font-mono text-muted-foreground whitespace-nowrap">
           {extraCharge > 0
             ? `+ ${extraCharge.toLocaleString()}원`
             : "기본 인원"}
         </span>
-        {canRemove ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onRemove}
-            aria-label={`구간 ${index + 1} 삭제`}
-          >
-            ×
-          </Button>
-        ) : null}
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -100,17 +101,20 @@ export default async function ReservationsPage({
   const cancelledCount = summary.cancelledCount;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>예약 목록</CardTitle>
           <Link href="/reservations/new">
-            <Button size="sm">새 예약</Button>
+            <Button size="sm" className="gap-1.5">
+              <Plus className="h-4 w-4" />
+              새 예약
+            </Button>
           </Link>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* 상태 탭 */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 overflow-x-auto -mx-1 px-1">
             {STATUS_OPTIONS.map((opt) => {
               const params = new URLSearchParams();
               if (from) params.set("from", from);
@@ -127,6 +131,7 @@ export default async function ReservationsPage({
                     type="button"
                     size="sm"
                     variant={active ? "default" : "outline"}
+                    className="shrink-0"
                   >
                     {opt.label}
                   </Button>
@@ -135,20 +140,29 @@ export default async function ReservationsPage({
             })}
           </div>
 
-          <form method="get" className="grid md:grid-cols-4 gap-3 items-end">
+          <form
+            method="get"
+            className="grid grid-cols-2 md:grid-cols-4 gap-3 items-end"
+          >
             {statusFilter ? (
               <input type="hidden" name="status" value={statusFilter} />
             ) : null}
-            <div className="space-y-1">
-              <Label htmlFor="from">시작 날짜</Label>
+            <div className="space-y-1 col-span-1">
+              <Label htmlFor="from" className="text-xs">
+                시작 날짜
+              </Label>
               <Input id="from" name="from" type="date" defaultValue={from ?? ""} />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="to">종료 날짜</Label>
+            <div className="space-y-1 col-span-1">
+              <Label htmlFor="to" className="text-xs">
+                종료 날짜
+              </Label>
               <Input id="to" name="to" type="date" defaultValue={to ?? ""} />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="tag">태그</Label>
+            <div className="space-y-1 col-span-2 md:col-span-1">
+              <Label htmlFor="tag" className="text-xs">
+                태그
+              </Label>
               <select
                 id="tag"
                 name="tag"
@@ -163,7 +177,7 @@ export default async function ReservationsPage({
                 ))}
               </select>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 col-span-2 md:col-span-1">
               <Button type="submit" className="flex-1">
                 검색
               </Button>
@@ -178,129 +192,241 @@ export default async function ReservationsPage({
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-base">
             {rowsTotalCount}건
             {cancelledCount > 0 ? (
-              <span className="text-xs text-muted-foreground ml-1">
+              <span className="text-xs text-muted-foreground ml-1 block sm:inline">
                 (예약 {activeCount} · 취소 {cancelledCount})
               </span>
             ) : null}
           </CardTitle>
           <div className="text-right">
-            <div className="text-xs text-muted-foreground">
+            <div className="text-[10px] sm:text-xs text-muted-foreground">
               총 금액 (취소 제외)
             </div>
-            <div className="text-xl font-semibold">{formatKRW(total)}</div>
+            <div className="text-base sm:text-xl font-semibold font-mono">
+              {formatKRW(total)}
+            </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 sm:p-6 sm:pt-0">
           {rowsTotalCount === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
-              조건에 맞는 예약이 없습니다.
+            <p className="text-sm text-muted-foreground py-12 text-center">
+              조건에 맞는 예약이 없습니다
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>상태</TableHead>
-                  <TableHead>일시</TableHead>
-                  <TableHead>예약자</TableHead>
-                  <TableHead>시간</TableHead>
-                  <TableHead>인원</TableHead>
-                  <TableHead>태그</TableHead>
-                  <TableHead className="text-right">금액</TableHead>
-                  <TableHead className="text-right">액션</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              {/* 모바일: 카드 리스트 */}
+              <div className="md:hidden divide-y">
                 {rows.map((r) => {
                   const cancelAction = cancelReservation.bind(null, r.id);
                   const restoreAction = restoreReservation.bind(null, r.id);
                   const cancelled = r.status === "cancelled";
                   return (
-                    <TableRow key={r.id}>
-                      <TableCell>
-                        {cancelled ? (
-                          <Badge
-                            variant="destructive"
-                            className="text-[10px]"
+                    <div key={r.id} className="px-4 py-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div
+                            className={`flex items-center gap-2 ${cancelled ? "opacity-60" : ""}`}
                           >
-                            취소
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="text-[10px]">
-                            예약
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell
-                        className={`font-mono text-xs ${cancelled ? "opacity-50 line-through" : ""}`}
-                      >
-                        <Link href={`/reservations/${r.id}`}>
-                          {fmtDateTime(r.startAt)}
-                        </Link>
-                      </TableCell>
-                      <TableCell
-                        className={cancelled ? "opacity-50 line-through" : ""}
-                      >
-                        <Link href={`/reservations/${r.id}`}>
-                          {r.customerName}
-                        </Link>
-                      </TableCell>
-                      <TableCell
-                        className={cancelled ? "opacity-50 line-through" : ""}
-                      >
-                        {formatDurationHours(durationHours(r.startAt, r.endAt))}
-                      </TableCell>
-                      <TableCell
-                        className={cancelled ? "opacity-50 line-through" : ""}
-                      >
-                        {peopleLabel(r.peopleSegments)}
-                      </TableCell>
-                      <TableCell
-                        className={cancelled ? "opacity-50 line-through" : ""}
-                      >
-                        <div className="flex flex-wrap gap-1">
-                          {r.tags.map((t) => (
-                            <Badge
-                              key={t}
-                              variant="secondary"
-                              className="text-xs"
+                            {cancelled ? (
+                              <Badge
+                                variant="destructive"
+                                className="text-[10px]"
+                              >
+                                취소
+                              </Badge>
+                            ) : (
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px]"
+                              >
+                                예약
+                              </Badge>
+                            )}
+                            <Link
+                              href={`/reservations/${r.id}`}
+                              className={`font-medium truncate hover:underline ${cancelled ? "line-through" : ""}`}
                             >
-                              {t}
-                            </Badge>
-                          ))}
+                              {r.customerName}
+                            </Link>
+                          </div>
+                          <div
+                            className={`text-xs text-muted-foreground font-mono mt-1 ${cancelled ? "line-through" : ""}`}
+                          >
+                            {fmtDateTime(r.startAt)} ·{" "}
+                            {formatDurationHours(
+                              durationHours(r.startAt, r.endAt),
+                            )}{" "}
+                            · {peopleLabel(r.peopleSegments)}
+                          </div>
+                          {r.tags.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {r.tags.map((t) => (
+                                <Badge
+                                  key={t}
+                                  variant="secondary"
+                                  className="text-[10px]"
+                                >
+                                  {t}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
-                      </TableCell>
-                      <TableCell
-                        className={`text-right font-mono ${cancelled ? "opacity-50 line-through" : ""}`}
-                      >
-                        {formatKRW(r.totalAmount)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {cancelled ? (
-                          <InlineStatusButton
-                            action={restoreAction}
-                            variant="restore"
-                          />
-                        ) : (
-                          <InlineStatusButton
-                            action={cancelAction}
-                            variant="cancel"
-                            reservationStartAt={r.startAt}
-                            totalAmount={r.totalAmount}
-                          />
-                        )}
-                      </TableCell>
-                    </TableRow>
+                        <div className="text-right shrink-0">
+                          <div
+                            className={`font-mono text-sm font-semibold ${cancelled ? "line-through opacity-60" : ""}`}
+                          >
+                            {formatKRW(r.totalAmount)}
+                          </div>
+                          <div className="mt-2">
+                            {cancelled ? (
+                              <InlineStatusButton
+                                action={restoreAction}
+                                variant="restore"
+                              />
+                            ) : (
+                              <InlineStatusButton
+                                action={cancelAction}
+                                variant="cancel"
+                                reservationStartAt={r.startAt}
+                                totalAmount={r.totalAmount}
+                              />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   );
                 })}
-              </TableBody>
-            </Table>
+              </div>
+
+              {/* 데스크톱: 테이블 */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>상태</TableHead>
+                      <TableHead>일시</TableHead>
+                      <TableHead>예약자</TableHead>
+                      <TableHead>시간</TableHead>
+                      <TableHead>인원</TableHead>
+                      <TableHead>태그</TableHead>
+                      <TableHead className="text-right">금액</TableHead>
+                      <TableHead className="text-right">액션</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rows.map((r) => {
+                      const cancelAction = cancelReservation.bind(null, r.id);
+                      const restoreAction = restoreReservation.bind(null, r.id);
+                      const cancelled = r.status === "cancelled";
+                      return (
+                        <TableRow key={r.id}>
+                          <TableCell>
+                            {cancelled ? (
+                              <Badge
+                                variant="destructive"
+                                className="text-[10px]"
+                              >
+                                취소
+                              </Badge>
+                            ) : (
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px]"
+                              >
+                                예약
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell
+                            className={`font-mono text-xs ${cancelled ? "opacity-50 line-through" : ""}`}
+                          >
+                            <Link
+                              href={`/reservations/${r.id}`}
+                              className="hover:underline"
+                            >
+                              {fmtDateTime(r.startAt)}
+                            </Link>
+                          </TableCell>
+                          <TableCell
+                            className={
+                              cancelled ? "opacity-50 line-through" : ""
+                            }
+                          >
+                            <Link
+                              href={`/reservations/${r.id}`}
+                              className="hover:underline"
+                            >
+                              {r.customerName}
+                            </Link>
+                          </TableCell>
+                          <TableCell
+                            className={
+                              cancelled ? "opacity-50 line-through" : ""
+                            }
+                          >
+                            {formatDurationHours(
+                              durationHours(r.startAt, r.endAt),
+                            )}
+                          </TableCell>
+                          <TableCell
+                            className={
+                              cancelled ? "opacity-50 line-through" : ""
+                            }
+                          >
+                            {peopleLabel(r.peopleSegments)}
+                          </TableCell>
+                          <TableCell
+                            className={
+                              cancelled ? "opacity-50 line-through" : ""
+                            }
+                          >
+                            <div className="flex flex-wrap gap-1">
+                              {r.tags.map((t) => (
+                                <Badge
+                                  key={t}
+                                  variant="secondary"
+                                  className="text-xs"
+                                >
+                                  {t}
+                                </Badge>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell
+                            className={`text-right font-mono ${cancelled ? "opacity-50 line-through" : ""}`}
+                          >
+                            {formatKRW(r.totalAmount)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {cancelled ? (
+                              <InlineStatusButton
+                                action={restoreAction}
+                                variant="restore"
+                              />
+                            ) : (
+                              <InlineStatusButton
+                                action={cancelAction}
+                                variant="cancel"
+                                reservationStartAt={r.startAt}
+                                totalAmount={r.totalAmount}
+                              />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
           {totalPages > 1 ? (
-            <div className="mt-4">
+            <div className="p-4 border-t sm:border-t-0 sm:p-0 sm:mt-4">
               <Pagination
                 currentPage={page}
                 totalPages={totalPages}

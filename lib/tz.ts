@@ -49,6 +49,41 @@ export function monthRange(year: number, month: number): { start: Date; end: Dat
   };
 }
 
+/** Date key (YYYY-MM-DD) 기준으로 KST 하루 범위를 반환 */
+export function dayRange(dateKey: string): { start: Date; end: Date } {
+  const start = fromZonedTime(`${dateKey}T00:00:00`, TZ);
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  return { start, end };
+}
+
+/** Date를 KST 기준 YYYY-MM-DD 로 변환 */
+export function toDateKey(d: Date): string {
+  return formatInTimeZone(d, TZ, "yyyy-MM-dd");
+}
+
+/** dateKey로부터 N일 이동 */
+export function shiftDateKey(dateKey: string, days: number): string {
+  const { start } = dayRange(dateKey);
+  const shifted = new Date(start.getTime() + days * 24 * 60 * 60 * 1000);
+  return toDateKey(shifted);
+}
+
+/** 주어진 date를 포함하는 주의 일요일 dateKey 반환 */
+export function weekStartKey(dateKey: string): string {
+  const { start } = dayRange(dateKey);
+  const dow = Number(formatInTimeZone(start, TZ, "e")) % 7; // 0=Sun
+  return shiftDateKey(dateKey, -dow);
+}
+
+/** 주어진 dateKey의 KST 일 시작 시각(분 단위 offset from 00:00)을 반환 */
+export function dateKeyAtMinutes(
+  dateKey: string,
+  minutesFromMidnight: number,
+): Date {
+  const { start } = dayRange(dateKey);
+  return new Date(start.getTime() + minutesFromMidnight * 60 * 1000);
+}
+
 export function formatKRW(amount: number): string {
   return new Intl.NumberFormat("ko-KR").format(amount) + "원";
 }

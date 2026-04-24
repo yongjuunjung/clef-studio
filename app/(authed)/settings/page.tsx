@@ -209,13 +209,13 @@ export default async function SettingsPage({
           <Separator />
           <form
             action={createPlatform}
-            className="grid md:grid-cols-[1fr_auto_auto_auto] gap-3 items-end"
+            className="grid grid-cols-2 md:grid-cols-[1fr_auto_auto_auto] gap-3 items-end"
           >
-            <div className="space-y-2">
+            <div className="space-y-2 col-span-2 md:col-span-1">
               <Label htmlFor="platformName">플랫폼 이름</Label>
               <Input id="platformName" name="name" required maxLength={100} />
             </div>
-            <div className="space-y-2 w-32">
+            <div className="space-y-2 md:w-32">
               <Label htmlFor="commissionRatePct">수수료 %</Label>
               <Input
                 id="commissionRatePct"
@@ -239,7 +239,9 @@ export default async function SettingsPage({
                 <span className="text-sm">필수</span>
               </label>
             </div>
-            <Button type="submit">추가</Button>
+            <Button type="submit" className="col-span-2 md:col-span-1">
+              추가
+            </Button>
           </form>
         </CardContent>
       </Card>
