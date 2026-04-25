@@ -35,7 +35,7 @@ export default async function AuthedLayout({
 
             <Link
               href="/"
-              className="text-base md:text-lg font-semibold bg-gradient-to-br from-indigo-600 to-violet-600 bg-clip-text text-transparent"
+              className="text-base md:text-lg font-semibold bg-gradient-to-br from-zinc-700 to-zinc-500 bg-clip-text text-transparent"
             >
               Clef Studio
             </Link>

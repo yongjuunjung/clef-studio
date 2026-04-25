@@ -57,7 +57,7 @@ export function MobileNav({
             <Link
               href="/"
               onClick={close}
-              className="text-lg font-semibold bg-gradient-to-br from-indigo-600 to-violet-600 bg-clip-text text-transparent"
+              className="text-lg font-semibold bg-gradient-to-br from-zinc-700 to-zinc-500 bg-clip-text text-transparent"
             >
               Clef Studio
             </Link>
