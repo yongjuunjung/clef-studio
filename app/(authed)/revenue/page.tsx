@@ -131,22 +131,36 @@ export default async function RevenuePage({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="p-3 rounded-md border bg-card md:col-span-1">
+              <div className="text-xs text-muted-foreground">총 매출</div>
+              <div className="text-lg font-semibold font-mono">
+                {formatKRW(summary.totalAmount)}
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
+                <div>
+                  <div className="text-muted-foreground">공급가액</div>
+                  <div className="font-mono">
+                    {formatKRW(summary.subtotalAmount)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">부가세</div>
+                  <div className="font-mono">
+                    {formatKRW(summary.vatAmount)}
+                  </div>
+                </div>
+              </div>
+            </div>
             <Metric
-              label="총 매출"
-              sub="부가세 포함 · 취소 반영"
-              amount={summary.totalAmount}
-              variant="primary"
-            />
-            <Metric
-              label="공급가액"
-              sub="부가세 제외"
-              amount={summary.subtotalAmount}
-            />
-            <Metric
-              label="부가세"
-              sub="세금계산서 발행분"
-              amount={summary.vatAmount}
+              label="연장 매출"
+              sub={
+                summary.extensionCount > 0
+                  ? `${summary.extensionCount}건의 연장`
+                  : "이번 달 연장 없음"
+              }
+              amount={summary.extensionAmount}
+              variant="accent"
             />
             <Metric
               label="플랫폼 수수료"
@@ -187,6 +201,9 @@ export default async function RevenuePage({
                   <TableHead>플랫폼</TableHead>
                   <TableHead className="text-right">건수</TableHead>
                   <TableHead className="text-right">총 매출</TableHead>
+                  <TableHead className="text-right text-indigo-600">
+                    연장
+                  </TableHead>
                   <TableHead className="text-right">공급가액</TableHead>
                   <TableHead className="text-right">부가세</TableHead>
                   <TableHead className="text-right">수수료</TableHead>
@@ -218,6 +235,16 @@ export default async function RevenuePage({
                     </TableCell>
                     <TableCell className="text-right">
                       {formatKRW(row.totalAmount)}
+                    </TableCell>
+                    <TableCell className="text-right text-indigo-600">
+                      {row.extensionCount > 0
+                        ? `${formatKRW(row.extensionAmount)}`
+                        : "-"}
+                      {row.extensionCount > 0 ? (
+                        <span className="text-[10px] text-muted-foreground ml-1">
+                          ({row.extensionCount}건)
+                        </span>
+                      ) : null}
                     </TableCell>
                     <TableCell className="text-right">
                       {formatKRW(row.subtotalAmount)}
@@ -411,7 +438,7 @@ function Metric({
   label: string;
   sub?: string;
   amount: number;
-  variant?: "primary" | "success";
+  variant?: "primary" | "success" | "accent";
   negative?: boolean;
 }) {
   const color =
@@ -419,9 +446,11 @@ function Metric({
       ? "text-foreground"
       : variant === "success"
         ? "text-emerald-600"
-        : negative
-          ? "text-destructive"
-          : "text-foreground";
+        : variant === "accent"
+          ? "text-indigo-600"
+          : negative
+            ? "text-destructive"
+            : "text-foreground";
   return (
     <div className="p-3 rounded-md border bg-card">
       <div className="text-xs text-muted-foreground">{label}</div>

@@ -3,8 +3,8 @@
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MoneyInput } from "@/components/ui/money-input";
 
 export function RefundEditor({
   action,
@@ -46,18 +46,15 @@ export function RefundEditor({
 
   return (
     <form action={handleSubmit} className="space-y-2">
-      <input type="hidden" name="refundAmount" value={amount} />
       <Label htmlFor="refundAmountDisplay">환불 금액 (원)</Label>
       <div className="flex items-center gap-2 flex-wrap">
-        <Input
+        <MoneyInput
           id="refundAmountDisplay"
-          type="number"
-          min={0}
-          max={totalAmount}
-          step={100}
+          name="refundAmount"
           value={amount}
-          onChange={(e) => setAmount(Number(e.target.value) || 0)}
-          className="w-40 font-mono"
+          onChange={setAmount}
+          max={totalAmount}
+          className="w-40"
         />
         <span className="text-xs text-muted-foreground whitespace-nowrap">
           총 매출의 {pct.toFixed(2)}%

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MoneyInput } from "@/components/ui/money-input";
 import { Textarea } from "@/components/ui/textarea";
 
 type Segment = { startTime: string; endTime: string; people: number };
@@ -384,14 +385,11 @@ export function ReservationForm({
               <Badge variant="secondary" className="text-[10px]">06 ~ 18시</Badge>
             </span>
           </Label>
-          <Input
+          <MoneyInput
             id="dayHourlyRate"
             name="dayHourlyRate"
-            type="number"
-            min={0}
-            step={1000}
             value={dayRate}
-            onChange={(e) => setDayRate(Number(e.target.value) || 0)}
+            onChange={setDayRate}
             required
           />
         </div>
@@ -404,14 +402,11 @@ export function ReservationForm({
               </Badge>
             </span>
           </Label>
-          <Input
+          <MoneyInput
             id="nightHourlyRate"
             name="nightHourlyRate"
-            type="number"
-            min={0}
-            step={1000}
             value={nightRate}
-            onChange={(e) => setNightRate(Number(e.target.value) || 0)}
+            onChange={setNightRate}
             required
           />
         </div>

@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MoneyInput } from "@/components/ui/money-input";
 import { Separator } from "@/components/ui/separator";
 import { disconnectGoogle } from "@/lib/google-calendar";
 import {
@@ -87,24 +88,18 @@ export default async function SettingsPage({
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="dayHourlyRate">주간 시간당 요금 (원)</Label>
-                <Input
+                <MoneyInput
                   id="dayHourlyRate"
                   name="dayHourlyRate"
-                  type="number"
-                  min={0}
-                  step={1000}
                   defaultValue={s.dayHourlyRate}
                 />
                 <p className="text-xs text-muted-foreground">06:00 ~ 18:00</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="nightHourlyRate">야간 시간당 요금 (원)</Label>
-                <Input
+                <MoneyInput
                   id="nightHourlyRate"
                   name="nightHourlyRate"
-                  type="number"
-                  min={0}
-                  step={1000}
                   defaultValue={s.nightHourlyRate}
                 />
                 <p className="text-xs text-muted-foreground">18:00 ~ 06:00</p>
@@ -139,12 +134,9 @@ export default async function SettingsPage({
                 <Label htmlFor="extraPerPersonHourlyRate">
                   초과 1인 시간당 요금 (원)
                 </Label>
-                <Input
+                <MoneyInput
                   id="extraPerPersonHourlyRate"
                   name="extraPerPersonHourlyRate"
-                  type="number"
-                  min={0}
-                  step={500}
                   defaultValue={s.extraPerPersonHourlyRate}
                 />
                 <p className="text-xs text-muted-foreground">

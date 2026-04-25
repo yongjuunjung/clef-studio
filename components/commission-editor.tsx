@@ -3,8 +3,8 @@
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MoneyInput } from "@/components/ui/money-input";
 
 export function CommissionEditor({
   action,
@@ -43,18 +43,14 @@ export function CommissionEditor({
 
   return (
     <form action={handleSubmit} className="space-y-2">
-      {/* hidden input을 통해 FormData에 값이 확실히 포함되도록 보증 */}
-      <input type="hidden" name="commissionAmount" value={amount} />
       <Label htmlFor="commissionAmountDisplay">수수료 (원)</Label>
       <div className="flex items-center gap-2 flex-wrap">
-        <Input
+        <MoneyInput
           id="commissionAmountDisplay"
-          type="number"
-          min={0}
-          step={100}
+          name="commissionAmount"
           value={amount}
-          onChange={(e) => setAmount(Number(e.target.value) || 0)}
-          className="w-40 font-mono"
+          onChange={setAmount}
+          className="w-40"
         />
         <span className="text-xs text-muted-foreground whitespace-nowrap">
           공급가액의 {pct.toFixed(2)}%
