@@ -10,15 +10,21 @@ import { Separator } from "@/components/ui/separator";
 import { ReservationForm } from "@/components/reservation-form";
 import { DeleteReservationButton } from "@/components/delete-reservation-button";
 import { CommissionEditor } from "@/components/commission-editor";
+import { ReservationExtensionForm } from "@/components/reservation-extension-form";
+import { RemoveExtensionButton } from "@/components/remove-extension-button";
+import { TaxInvoiceIssuedToggle } from "@/components/tax-invoice-issued-toggle";
 import {
   CancelReservationButton,
   RestoreReservationButton,
 } from "@/components/status-action-buttons";
 import {
+  addReservationExtension,
   cancelReservation,
   deleteReservation,
   getReservation,
+  removeLatestReservationExtension,
   restoreReservation,
+  setTaxInvoiceIssued,
   updateCommissionAmount,
   updateRefundAmount,
   updateReservation,
@@ -87,6 +93,25 @@ export default async function ReservationDetailPage({
   const restoreAction = restoreReservation.bind(null, reservation.id);
   const commissionAction = updateCommissionAmount.bind(null, reservation.id);
   const refundAction = updateRefundAmount.bind(null, reservation.id);
+  const addExtensionAction = addReservationExtension.bind(
+    null,
+    reservation.id,
+  );
+  const removeExtensionAction = removeLatestReservationExtension.bind(
+    null,
+    reservation.id,
+  );
+  const taxInvoiceIssuedAction = setTaxInvoiceIssued.bind(null, reservation.id);
+
+  const lastSegmentPeople =
+    reservation.peopleSegments.length > 0
+      ? reservation.peopleSegments[reservation.peopleSegments.length - 1]
+          .peopleCount
+      : s.defaultMinPeople;
+  const extensionsTotalAmount = reservation.extensions.reduce(
+    (sum, e) => sum + e.amount,
+    0,
+  );
 
   const savedSegments = reservation.peopleSegments.map((seg) => ({
     startTime: toLocalDateTimeInputs(seg.startAt).time,
@@ -129,9 +154,18 @@ export default async function ReservationDetailPage({
                 </Badge>
               ) : null}
               {reservation.taxInvoice ? (
-                <Badge variant="outline" className="text-[10px]">
-                  세금계산서
-                </Badge>
+                reservation.taxInvoiceIssued ? (
+                  <Badge className="text-[10px] bg-emerald-600 hover:bg-emerald-600">
+                    세금계산서 발급
+                  </Badge>
+                ) : (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] border-amber-500 text-amber-700"
+                  >
+                    세금계산서 미발급
+                  </Badge>
+                )
               ) : null}
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
@@ -200,6 +234,75 @@ export default async function ReservationDetailPage({
         </CardContent>
       </Card>
 
+      {!isCancelled ? (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base">연장 내역</CardTitle>
+            {reservation.extensions.length > 0 ? (
+              <span className="text-xs text-muted-foreground font-mono">
+                총 {reservation.extensions.length}회 ·{" "}
+                {formatKRW(extensionsTotalAmount)}
+              </span>
+            ) : null}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {reservation.extensions.length > 0 ? (
+              <div className="space-y-1">
+                {reservation.extensions.map((ext, idx) => {
+                  const isLast = idx === reservation.extensions.length - 1;
+                  return (
+                    <div
+                      key={ext.id}
+                      className="flex items-center gap-3 text-sm py-1.5 border-b last:border-b-0"
+                    >
+                      <div className="font-mono text-xs w-24 shrink-0 text-muted-foreground">
+                        {fmtDateTime(ext.createdAt)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div>
+                          +{ext.extraHours}시간 · {ext.peopleCount}명
+                        </div>
+                        {ext.note ? (
+                          <div className="text-xs text-muted-foreground truncate">
+                            {ext.note}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="font-mono text-sm shrink-0">
+                        +{formatKRW(ext.amount)}
+                      </div>
+                      {isLast ? (
+                        <RemoveExtensionButton
+                          action={removeExtensionAction}
+                          extraHours={ext.extraHours}
+                          amount={ext.amount}
+                        />
+                      ) : (
+                        <div className="w-8" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                아직 연장된 내역이 없습니다.
+              </p>
+            )}
+            <Separator />
+            <ReservationExtensionForm
+              action={addExtensionAction}
+              currentEndTime={endInputs.time}
+              dayHourlyRate={reservation.dayHourlyRate}
+              nightHourlyRate={reservation.nightHourlyRate}
+              defaultPeopleCount={lastSegmentPeople}
+              minPeople={s.defaultMinPeople}
+              extraPerPersonHourlyRate={s.extraPerPersonHourlyRate}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">정산</CardTitle>
@@ -209,6 +312,12 @@ export default async function ReservationDetailPage({
             <Row label="기본 요금" value={formatKRW(baseAmount)} />
             {extraAmount > 0 ? (
               <Row label="인원 추가" value={formatKRW(extraAmount)} />
+            ) : null}
+            {reservation.extensions.length > 0 ? (
+              <Row
+                label={`연장 ${reservation.extensions.length}회`}
+                value={`+ ${formatKRW(extensionsTotalAmount)}`}
+              />
             ) : null}
             <Row label="공급가액" value={formatKRW(reservation.subtotalAmount)} />
             <Row label="부가세" value={formatKRW(reservation.vatAmount)} />
@@ -262,6 +371,26 @@ export default async function ReservationDetailPage({
               {reservation.platformCommissionPct}% · 실수령은 매출 집계에서도
               이 수수료 값을 사용합니다.
             </p>
+          ) : null}
+
+          {reservation.taxInvoice ? (
+            <>
+              <Separator />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="text-sm font-medium">세금계산서</div>
+                  <div className="text-xs text-muted-foreground">
+                    {reservation.taxInvoiceIssued && reservation.taxInvoiceIssuedAt
+                      ? `${fmtDateTime(reservation.taxInvoiceIssuedAt)}에 발급됨`
+                      : "발급 후 버튼을 눌러 상태를 갱신하세요"}
+                  </div>
+                </div>
+                <TaxInvoiceIssuedToggle
+                  action={taxInvoiceIssuedAction}
+                  initialIssued={reservation.taxInvoiceIssued}
+                />
+              </div>
+            </>
           ) : null}
 
           {isCancelled ? (

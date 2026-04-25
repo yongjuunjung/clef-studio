@@ -7,12 +7,13 @@ import { z } from "zod";
 import { db } from "@/db";
 import {
   platforms,
+  reservationExtensions,
   reservationPeopleSegments,
   reservations,
 } from "@/db/schema";
 import type { ReservationWithSegments } from "@/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { computeExtraCharge } from "@/lib/reservations-helpers";
+import { computeReservationAmounts } from "@/lib/reservations-helpers";
 import { computeRefund } from "@/lib/refund-policy";
 import { getSettings } from "@/lib/settings";
 import {
@@ -25,8 +26,6 @@ import {
   pushCalendarEvent,
   updateCalendarEvent,
 } from "@/lib/google-calendar";
-
-const VAT_RATE = 0.1;
 
 const segmentInputSchema = z.object({
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
@@ -174,18 +173,17 @@ async function extractForm(formData: FormData): Promise<ParsedForm> {
     commissionPct = p.commissionRatePct;
   }
 
-  const { dayHours, nightHours } = splitDayNightHoursFromDates(startAt, endAt);
-  const baseAmount = Math.round(
-    dayHours * d.dayHourlyRate + nightHours * d.nightHourlyRate,
-  );
-  const extraAmount = computeExtraCharge(
+  const amounts = computeReservationAmounts({
+    startAt,
+    endAt,
+    dayHourlyRate: d.dayHourlyRate,
+    nightHourlyRate: d.nightHourlyRate,
     segments,
-    s.defaultMinPeople,
-    s.extraPerPersonHourlyRate,
-  );
-  const subtotal = baseAmount + extraAmount;
-  const vat = d.taxInvoice ? Math.round(subtotal * VAT_RATE) : 0;
-  const commissionAmount = Math.round((subtotal * commissionPct) / 100);
+    minPeople: s.defaultMinPeople,
+    extraPerPersonHourlyRate: s.extraPerPersonHourlyRate,
+    taxInvoice: d.taxInvoice,
+    commissionPct,
+  });
 
   return {
     customerName: d.customerName,
@@ -197,11 +195,11 @@ async function extractForm(formData: FormData): Promise<ParsedForm> {
     nightHourlyRate: d.nightHourlyRate,
     platformId: d.platformId,
     platformCommissionPct: commissionPct,
-    commissionAmount,
+    commissionAmount: amounts.commissionAmount,
     taxInvoice: d.taxInvoice,
-    subtotalAmount: subtotal,
-    vatAmount: vat,
-    totalAmount: subtotal + vat,
+    subtotalAmount: amounts.subtotalAmount,
+    vatAmount: amounts.vatAmount,
+    totalAmount: amounts.totalAmount,
     tags: parseTags(d.tags ?? ""),
     notes: d.notes || null,
     segments,
@@ -454,6 +452,251 @@ export async function restoreReservation(id: number) {
   revalidatePath("/revenue");
 }
 
+const extensionInputSchema = z.object({
+  extraHours: z.coerce.number().refine((v) => v > 0 && (v * 2) % 1 === 0, {
+    message: "연장 시간은 0.5시간 단위로 0보다 커야 합니다",
+  }),
+  peopleCount: z.coerce.number().int().min(1).max(1000),
+  note: z.string().max(500).optional(),
+});
+
+export async function addReservationExtension(
+  reservationId: number,
+  formData: FormData,
+) {
+  await requireAuth();
+  const parsed = extensionInputSchema.safeParse({
+    extraHours: formData.get("extraHours"),
+    peopleCount: formData.get("peopleCount"),
+    note: formData.get("note") ?? undefined,
+  });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues.map((i) => i.message).join(", "));
+  }
+  const { extraHours, peopleCount } = parsed.data;
+  const note = parsed.data.note?.trim() || null;
+
+  const r = await getReservation(reservationId);
+  if (!r) throw new Error("예약을 찾을 수 없습니다");
+  if (r.status === "cancelled") {
+    throw new Error("취소된 예약은 연장할 수 없습니다");
+  }
+
+  const newEndAt = new Date(r.endAt.getTime() + extraHours * 60 * 60 * 1000);
+  const totalDuration =
+    (newEndAt.getTime() - r.startAt.getTime()) / (60 * 60 * 1000);
+  if (totalDuration > 24) {
+    throw new Error("총 예약 시간은 24시간을 넘을 수 없습니다");
+  }
+
+  const { dayHours, nightHours } = splitDayNightHoursFromDates(
+    r.endAt,
+    newEndAt,
+  );
+
+  const settings = await getSettings();
+  const baseExtensionAmount = Math.round(
+    dayHours * r.dayHourlyRate + nightHours * r.nightHourlyRate,
+  );
+  const extraPeople = Math.max(0, peopleCount - settings.defaultMinPeople);
+  const extensionPeopleCharge = Math.round(
+    extraPeople * settings.extraPerPersonHourlyRate * extraHours,
+  );
+  const extensionAmount = baseExtensionAmount + extensionPeopleCharge;
+
+  await db.insert(reservationExtensions).values({
+    reservationId,
+    extraHours,
+    dayHours,
+    nightHours,
+    amount: extensionAmount,
+    peopleCount,
+    note,
+  });
+
+  await db.insert(reservationPeopleSegments).values({
+    reservationId,
+    startAt: r.endAt,
+    endAt: newEndAt,
+    peopleCount,
+  });
+
+  const allSegments = [
+    ...r.peopleSegments.map((s) => ({
+      startAt: s.startAt,
+      endAt: s.endAt,
+      peopleCount: s.peopleCount,
+    })),
+    { startAt: r.endAt, endAt: newEndAt, peopleCount },
+  ];
+
+  const recomputed = computeReservationAmounts({
+    startAt: r.startAt,
+    endAt: newEndAt,
+    dayHourlyRate: r.dayHourlyRate,
+    nightHourlyRate: r.nightHourlyRate,
+    segments: allSegments,
+    minPeople: settings.defaultMinPeople,
+    extraPerPersonHourlyRate: settings.extraPerPersonHourlyRate,
+    taxInvoice: r.taxInvoice,
+    commissionPct: r.platformCommissionPct,
+  });
+
+  await db
+    .update(reservations)
+    .set({
+      endAt: newEndAt,
+      subtotalAmount: recomputed.subtotalAmount,
+      vatAmount: recomputed.vatAmount,
+      totalAmount: recomputed.totalAmount,
+      commissionAmount: recomputed.commissionAmount,
+      updatedAt: new Date(),
+    })
+    .where(eq(reservations.id, reservationId));
+
+  if (r.googleEventId) {
+    try {
+      const after = await getReservation(reservationId);
+      if (after) await updateCalendarEvent(r.googleEventId, after);
+    } catch (e) {
+      console.error("Google Calendar update failed", e);
+    }
+  }
+
+  revalidatePath("/");
+  revalidatePath("/reservations");
+  revalidatePath(`/reservations/${reservationId}`);
+  revalidatePath("/revenue");
+}
+
+export async function removeLatestReservationExtension(reservationId: number) {
+  await requireAuth();
+  const r = await getReservation(reservationId);
+  if (!r) throw new Error("예약을 찾을 수 없습니다");
+  if (r.status === "cancelled") {
+    throw new Error("취소된 예약은 수정할 수 없습니다");
+  }
+  if (r.extensions.length === 0) {
+    throw new Error("삭제할 연장 내역이 없습니다");
+  }
+
+  const latest = r.extensions[r.extensions.length - 1];
+  const newEndAt = new Date(
+    r.endAt.getTime() - latest.extraHours * 60 * 60 * 1000,
+  );
+
+  const settings = await getSettings();
+  const minHours = settings.minBookingHours;
+  const remainingDuration =
+    (newEndAt.getTime() - r.startAt.getTime()) / (60 * 60 * 1000);
+  if (remainingDuration < minHours) {
+    throw new Error(`연장을 모두 취소하면 최소 예약 시간(${minHours}시간) 미만입니다`);
+  }
+
+  if (r.peopleSegments.length === 0) {
+    throw new Error("인원 구간 데이터가 없습니다");
+  }
+  const lastSeg = r.peopleSegments[r.peopleSegments.length - 1];
+
+  await db
+    .delete(reservationExtensions)
+    .where(eq(reservationExtensions.id, latest.id));
+  await db
+    .delete(reservationPeopleSegments)
+    .where(eq(reservationPeopleSegments.id, lastSeg.id));
+
+  const remainingSegments = r.peopleSegments.slice(0, -1).map((s) => ({
+    startAt: s.startAt,
+    endAt: s.endAt,
+    peopleCount: s.peopleCount,
+  }));
+
+  // 마지막 세그먼트가 새 endAt과 일치하지 않으면 마지막 세그먼트의 endAt을 newEndAt으로 보정
+  if (
+    remainingSegments.length > 0 &&
+    remainingSegments[remainingSegments.length - 1].endAt.getTime() !==
+      newEndAt.getTime()
+  ) {
+    const tail = remainingSegments[remainingSegments.length - 1];
+    const adjustedTail = { ...tail, endAt: newEndAt };
+    remainingSegments[remainingSegments.length - 1] = adjustedTail;
+    const tailRow = r.peopleSegments[r.peopleSegments.length - 2];
+    if (tailRow) {
+      await db
+        .update(reservationPeopleSegments)
+        .set({ endAt: newEndAt })
+        .where(eq(reservationPeopleSegments.id, tailRow.id));
+    }
+  }
+
+  const recomputed = computeReservationAmounts({
+    startAt: r.startAt,
+    endAt: newEndAt,
+    dayHourlyRate: r.dayHourlyRate,
+    nightHourlyRate: r.nightHourlyRate,
+    segments: remainingSegments,
+    minPeople: settings.defaultMinPeople,
+    extraPerPersonHourlyRate: settings.extraPerPersonHourlyRate,
+    taxInvoice: r.taxInvoice,
+    commissionPct: r.platformCommissionPct,
+  });
+
+  await db
+    .update(reservations)
+    .set({
+      endAt: newEndAt,
+      subtotalAmount: recomputed.subtotalAmount,
+      vatAmount: recomputed.vatAmount,
+      totalAmount: recomputed.totalAmount,
+      commissionAmount: recomputed.commissionAmount,
+      updatedAt: new Date(),
+    })
+    .where(eq(reservations.id, reservationId));
+
+  if (r.googleEventId) {
+    try {
+      const after = await getReservation(reservationId);
+      if (after) await updateCalendarEvent(r.googleEventId, after);
+    } catch (e) {
+      console.error("Google Calendar update failed", e);
+    }
+  }
+
+  revalidatePath("/");
+  revalidatePath("/reservations");
+  revalidatePath(`/reservations/${reservationId}`);
+  revalidatePath("/revenue");
+}
+
+export async function setTaxInvoiceIssued(
+  reservationId: number,
+  formData: FormData,
+) {
+  await requireAuth();
+  const raw = formData.get("issued");
+  const issued = raw === "on" || raw === "true" || raw === "1";
+
+  const r = await getReservation(reservationId);
+  if (!r) throw new Error("예약을 찾을 수 없습니다");
+  if (!r.taxInvoice && issued) {
+    throw new Error("세금계산서 발행 대상이 아닌 예약입니다");
+  }
+
+  await db
+    .update(reservations)
+    .set({
+      taxInvoiceIssued: issued,
+      taxInvoiceIssuedAt: issued ? new Date() : null,
+      updatedAt: new Date(),
+    })
+    .where(eq(reservations.id, reservationId));
+
+  revalidatePath("/");
+  revalidatePath("/reservations");
+  revalidatePath(`/reservations/${reservationId}`);
+  revalidatePath("/revenue");
+}
+
 export async function deleteReservation(id: number) {
   await requireAuth();
   const existing = await getReservation(id);
@@ -484,6 +727,9 @@ export async function getReservation(
         orderBy: asc(reservationPeopleSegments.startAt),
       },
       platform: true,
+      extensions: {
+        orderBy: asc(reservationExtensions.createdAt),
+      },
     },
   });
   return row ?? null;
@@ -529,6 +775,9 @@ export async function listReservations(
         orderBy: asc(reservationPeopleSegments.startAt),
       },
       platform: true,
+      extensions: {
+        orderBy: asc(reservationExtensions.createdAt),
+      },
     },
   });
 }
@@ -590,6 +839,9 @@ export async function listReservationsInMonth(
         orderBy: asc(reservationPeopleSegments.startAt),
       },
       platform: true,
+      extensions: {
+        orderBy: asc(reservationExtensions.createdAt),
+      },
     },
   });
 }

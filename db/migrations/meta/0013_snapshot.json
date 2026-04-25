@@ -1,0 +1,178 @@
+{
+  "id": "c0a2b6de-0013-42e0-b2f0-2a9b000013e0",
+  "prevId": "c0a2b6de-0012-42e0-b2f0-2a9b000012e0",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.clef_platforms": {
+      "name": "clef_platforms",
+      "schema": "",
+      "columns": {
+        "id": { "name": "id", "type": "serial", "primaryKey": true, "notNull": true },
+        "name": { "name": "name", "type": "varchar(100)", "primaryKey": false, "notNull": true },
+        "commission_rate_pct": { "name": "commission_rate_pct", "type": "real", "primaryKey": false, "notNull": true, "default": 0 },
+        "tax_invoice_required": { "name": "tax_invoice_required", "type": "boolean", "primaryKey": false, "notNull": true, "default": false },
+        "created_at": { "name": "created_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" },
+        "updated_at": { "name": "updated_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.clef_reservations": {
+      "name": "clef_reservations",
+      "schema": "",
+      "columns": {
+        "id": { "name": "id", "type": "serial", "primaryKey": true, "notNull": true },
+        "customer_name": { "name": "customer_name", "type": "varchar(100)", "primaryKey": false, "notNull": true },
+        "customer_phone": { "name": "customer_phone", "type": "varchar(30)", "primaryKey": false, "notNull": false },
+        "customer_email": { "name": "customer_email", "type": "varchar(200)", "primaryKey": false, "notNull": false },
+        "start_at": { "name": "start_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true },
+        "end_at": { "name": "end_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true },
+        "day_hourly_rate": { "name": "day_hourly_rate", "type": "integer", "primaryKey": false, "notNull": true },
+        "night_hourly_rate": { "name": "night_hourly_rate", "type": "integer", "primaryKey": false, "notNull": true, "default": 0 },
+        "tax_invoice": { "name": "tax_invoice", "type": "boolean", "primaryKey": false, "notNull": true, "default": false },
+        "tax_invoice_issued": { "name": "tax_invoice_issued", "type": "boolean", "primaryKey": false, "notNull": true, "default": false },
+        "tax_invoice_issued_at": { "name": "tax_invoice_issued_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": false },
+        "platform_id": { "name": "platform_id", "type": "integer", "primaryKey": false, "notNull": false },
+        "platform_commission_pct": { "name": "platform_commission_pct", "type": "real", "primaryKey": false, "notNull": true, "default": 0 },
+        "commission_amount": { "name": "commission_amount", "type": "integer", "primaryKey": false, "notNull": true, "default": 0 },
+        "subtotal_amount": { "name": "subtotal_amount", "type": "integer", "primaryKey": false, "notNull": true, "default": 0 },
+        "vat_amount": { "name": "vat_amount", "type": "integer", "primaryKey": false, "notNull": true, "default": 0 },
+        "total_amount": { "name": "total_amount", "type": "integer", "primaryKey": false, "notNull": true },
+        "tags": { "name": "tags", "type": "text[]", "primaryKey": false, "notNull": true, "default": "'{}'" },
+        "notes": { "name": "notes", "type": "text", "primaryKey": false, "notNull": false },
+        "google_event_id": { "name": "google_event_id", "type": "varchar(200)", "primaryKey": false, "notNull": false },
+        "status": { "name": "status", "type": "varchar(20)", "primaryKey": false, "notNull": true, "default": "'active'" },
+        "refund_rate_pct": { "name": "refund_rate_pct", "type": "integer", "primaryKey": false, "notNull": true, "default": 0 },
+        "refund_amount": { "name": "refund_amount", "type": "integer", "primaryKey": false, "notNull": true, "default": 0 },
+        "cancelled_at": { "name": "cancelled_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": false },
+        "created_at": { "name": "created_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" },
+        "updated_at": { "name": "updated_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "reservations_platform_id_platforms_id_fk": {
+          "name": "reservations_platform_id_platforms_id_fk",
+          "tableFrom": "clef_reservations",
+          "tableTo": "clef_platforms",
+          "columnsFrom": ["platform_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.clef_reservation_people_segments": {
+      "name": "clef_reservation_people_segments",
+      "schema": "",
+      "columns": {
+        "id": { "name": "id", "type": "serial", "primaryKey": true, "notNull": true },
+        "reservation_id": { "name": "reservation_id", "type": "integer", "primaryKey": false, "notNull": true },
+        "start_at": { "name": "start_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true },
+        "end_at": { "name": "end_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true },
+        "people_count": { "name": "people_count", "type": "integer", "primaryKey": false, "notNull": true }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "reservation_people_segments_reservation_id_reservations_id_fk": {
+          "name": "reservation_people_segments_reservation_id_reservations_id_fk",
+          "tableFrom": "clef_reservation_people_segments",
+          "tableTo": "clef_reservations",
+          "columnsFrom": ["reservation_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.clef_reservation_extensions": {
+      "name": "clef_reservation_extensions",
+      "schema": "",
+      "columns": {
+        "id": { "name": "id", "type": "serial", "primaryKey": true, "notNull": true },
+        "reservation_id": { "name": "reservation_id", "type": "integer", "primaryKey": false, "notNull": true },
+        "extra_hours": { "name": "extra_hours", "type": "real", "primaryKey": false, "notNull": true },
+        "day_hours": { "name": "day_hours", "type": "real", "primaryKey": false, "notNull": true, "default": 0 },
+        "night_hours": { "name": "night_hours", "type": "real", "primaryKey": false, "notNull": true, "default": 0 },
+        "amount": { "name": "amount", "type": "integer", "primaryKey": false, "notNull": true },
+        "people_count": { "name": "people_count", "type": "integer", "primaryKey": false, "notNull": true },
+        "note": { "name": "note", "type": "text", "primaryKey": false, "notNull": false },
+        "created_at": { "name": "created_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" },
+        "updated_at": { "name": "updated_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" }
+      },
+      "indexes": {
+        "clef_reservation_extensions_reservation_id_idx": {
+          "name": "clef_reservation_extensions_reservation_id_idx",
+          "columns": [
+            { "expression": "reservation_id", "isExpression": false, "asc": true, "nulls": "last" }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "clef_reservation_extensions_reservation_id_clef_reservations_id_fk": {
+          "name": "clef_reservation_extensions_reservation_id_clef_reservations_id_fk",
+          "tableFrom": "clef_reservation_extensions",
+          "tableTo": "clef_reservations",
+          "columnsFrom": ["reservation_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.clef_settings": {
+      "name": "clef_settings",
+      "schema": "",
+      "columns": {
+        "id": { "name": "id", "type": "integer", "primaryKey": true, "notNull": true, "default": 1 },
+        "day_hourly_rate": { "name": "day_hourly_rate", "type": "integer", "primaryKey": false, "notNull": true, "default": 0 },
+        "night_hourly_rate": { "name": "night_hourly_rate", "type": "integer", "primaryKey": false, "notNull": true, "default": 0 },
+        "default_min_people": { "name": "default_min_people", "type": "integer", "primaryKey": false, "notNull": true, "default": 1 },
+        "extra_per_person_hourly_rate": { "name": "extra_per_person_hourly_rate", "type": "integer", "primaryKey": false, "notNull": true, "default": 0 },
+        "min_booking_hours": { "name": "min_booking_hours", "type": "integer", "primaryKey": false, "notNull": true, "default": 2 },
+        "google_refresh_token": { "name": "google_refresh_token", "type": "text", "primaryKey": false, "notNull": false },
+        "google_calendar_id": { "name": "google_calendar_id", "type": "text", "primaryKey": false, "notNull": false },
+        "google_connected_email": { "name": "google_connected_email", "type": "text", "primaryKey": false, "notNull": false },
+        "updated_at": { "name": "updated_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": { "columns": {}, "schemas": {}, "tables": {} }
+}

@@ -85,6 +85,20 @@
       "when": 1777040000000,
       "tag": "0011_rename_tables_clef_prefix",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1777041000000,
+      "tag": "0012_reservation_extensions",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1777042000000,
+      "tag": "0013_tax_invoice_issued",
+      "breakpoints": true
     }
   ]
 }

@@ -33,6 +33,11 @@ export const reservations = pgTable("clef_reservations", {
   dayHourlyRate: integer("day_hourly_rate").notNull(),
   nightHourlyRate: integer("night_hourly_rate").notNull().default(0),
   taxInvoice: boolean("tax_invoice").notNull().default(false),
+  taxInvoiceIssued: boolean("tax_invoice_issued").notNull().default(false),
+  taxInvoiceIssuedAt: timestamp("tax_invoice_issued_at", {
+    withTimezone: true,
+    mode: "date",
+  }),
   platformId: integer("platform_id").references(() => platforms.id, {
     onDelete: "set null",
   }),
@@ -69,8 +74,28 @@ export const reservationPeopleSegments = pgTable(
   },
 );
 
+export const reservationExtensions = pgTable("clef_reservation_extensions", {
+  id: serial("id").primaryKey(),
+  reservationId: integer("reservation_id")
+    .notNull()
+    .references(() => reservations.id, { onDelete: "cascade" }),
+  extraHours: real("extra_hours").notNull(),
+  dayHours: real("day_hours").notNull().default(0),
+  nightHours: real("night_hours").notNull().default(0),
+  amount: integer("amount").notNull(),
+  peopleCount: integer("people_count").notNull(),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+    .notNull()
+    .defaultNow(),
+});
+
 export const reservationsRelations = relations(reservations, ({ many, one }) => ({
   peopleSegments: many(reservationPeopleSegments),
+  extensions: many(reservationExtensions),
   platform: one(platforms, {
     fields: [reservations.platformId],
     references: [platforms.id],
@@ -82,6 +107,16 @@ export const segmentsRelations = relations(
   ({ one }) => ({
     reservation: one(reservations, {
       fields: [reservationPeopleSegments.reservationId],
+      references: [reservations.id],
+    }),
+  }),
+);
+
+export const extensionsRelations = relations(
+  reservationExtensions,
+  ({ one }) => ({
+    reservation: one(reservations, {
+      fields: [reservationExtensions.reservationId],
       references: [reservations.id],
     }),
   }),
@@ -110,8 +145,11 @@ export type PeopleSegment = typeof reservationPeopleSegments.$inferSelect;
 export type NewPeopleSegment = typeof reservationPeopleSegments.$inferInsert;
 export type Platform = typeof platforms.$inferSelect;
 export type NewPlatform = typeof platforms.$inferInsert;
+export type ReservationExtension = typeof reservationExtensions.$inferSelect;
+export type NewReservationExtension = typeof reservationExtensions.$inferInsert;
 export type ReservationWithSegments = Reservation & {
   peopleSegments: PeopleSegment[];
   platform: Platform | null;
+  extensions: ReservationExtension[];
 };
 export type Settings = typeof settings.$inferSelect;

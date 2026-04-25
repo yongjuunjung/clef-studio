@@ -228,7 +228,7 @@ export default async function ReservationsPage({
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <div
-                            className={`flex items-center gap-2 ${cancelled ? "opacity-60" : ""}`}
+                            className={`flex items-center gap-2 flex-wrap ${cancelled ? "opacity-60" : ""}`}
                           >
                             {cancelled ? (
                               <Badge
@@ -251,6 +251,20 @@ export default async function ReservationsPage({
                             >
                               {r.customerName}
                             </Link>
+                            {r.taxInvoice ? (
+                              r.taxInvoiceIssued ? (
+                                <Badge className="text-[10px] bg-emerald-600 hover:bg-emerald-600">
+                                  계산서 발급
+                                </Badge>
+                              ) : (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] border-amber-500 text-amber-700"
+                                >
+                                  계산서 미발급
+                                </Badge>
+                              )
+                            ) : null}
                           </div>
                           <div
                             className={`text-xs text-muted-foreground font-mono mt-1 ${cancelled ? "line-through" : ""}`}
@@ -326,21 +340,37 @@ export default async function ReservationsPage({
                       return (
                         <TableRow key={r.id}>
                           <TableCell>
-                            {cancelled ? (
-                              <Badge
-                                variant="destructive"
-                                className="text-[10px]"
-                              >
-                                취소
-                              </Badge>
-                            ) : (
-                              <Badge
-                                variant="secondary"
-                                className="text-[10px]"
-                              >
-                                예약
-                              </Badge>
-                            )}
+                            <div className="flex flex-wrap items-center gap-1">
+                              {cancelled ? (
+                                <Badge
+                                  variant="destructive"
+                                  className="text-[10px]"
+                                >
+                                  취소
+                                </Badge>
+                              ) : (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[10px]"
+                                >
+                                  예약
+                                </Badge>
+                              )}
+                              {r.taxInvoice ? (
+                                r.taxInvoiceIssued ? (
+                                  <Badge className="text-[10px] bg-emerald-600 hover:bg-emerald-600">
+                                    계산서 발급
+                                  </Badge>
+                                ) : (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] border-amber-500 text-amber-700"
+                                  >
+                                    계산서 미발급
+                                  </Badge>
+                                )
+                              ) : null}
+                            </div>
                           </TableCell>
                           <TableCell
                             className={`font-mono text-xs ${cancelled ? "opacity-50 line-through" : ""}`}
