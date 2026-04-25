@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Pagination } from "@/components/pagination";
+import { PlatformBadge } from "@/components/platform-badge";
 import { listPlatforms } from "@/lib/platforms";
 import {
   countReservations,
@@ -222,7 +223,7 @@ export default async function RevenuePage({
                           직접
                         </Badge>
                       ) : (
-                        row.platformName
+                        <PlatformBadge name={row.platformName} />
                       )}
                     </TableCell>
                     <TableCell className="text-right">
@@ -379,9 +380,7 @@ export default async function RevenuePage({
                         </TableCell>
                         <TableCell>
                           {r.platform ? (
-                            <Badge variant="outline" className="text-[10px]">
-                              {r.platform.name}
-                            </Badge>
+                            <PlatformBadge name={r.platform.name} />
                           ) : (
                             <span className="text-xs text-muted-foreground">
                               직접

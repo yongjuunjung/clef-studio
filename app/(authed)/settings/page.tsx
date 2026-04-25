@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MoneyInput } from "@/components/ui/money-input";
+import { PlatformBadge } from "@/components/platform-badge";
 import { Separator } from "@/components/ui/separator";
 import { disconnectGoogle } from "@/lib/google-calendar";
 import {
@@ -167,8 +168,8 @@ export default async function SettingsPage({
                     key={p.id}
                     className="flex items-center gap-3 px-3 py-2"
                   >
-                    <div className="font-medium min-w-0 flex-1 truncate">
-                      {p.name}
+                    <div className="min-w-0 flex-1 truncate">
+                      <PlatformBadge name={p.name} className="text-xs" />
                     </div>
                     <Badge variant="outline" className="text-[10px]">
                       수수료 {p.commissionRatePct}%

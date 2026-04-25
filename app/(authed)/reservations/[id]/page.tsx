@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { ReservationForm } from "@/components/reservation-form";
 import { DeleteReservationButton } from "@/components/delete-reservation-button";
 import { CommissionEditor } from "@/components/commission-editor";
+import { PlatformBadge } from "@/components/platform-badge";
 import { ReservationExtensionForm } from "@/components/reservation-extension-form";
 import { RemoveExtensionButton } from "@/components/remove-extension-button";
 import { TaxInvoiceIssuedToggle } from "@/components/tax-invoice-issued-toggle";
@@ -149,9 +150,7 @@ export default async function ReservationDetailPage({
                 </Badge>
               ) : null}
               {reservation.platform ? (
-                <Badge variant="outline" className="text-[10px]">
-                  {reservation.platform.name}
-                </Badge>
+                <PlatformBadge name={reservation.platform.name} />
               ) : null}
               {reservation.taxInvoice ? (
                 reservation.taxInvoiceIssued ? (
