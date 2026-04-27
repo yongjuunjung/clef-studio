@@ -96,10 +96,14 @@ type ParsedForm = {
 };
 
 async function extractForm(formData: FormData): Promise<ParsedForm> {
+  const optStr = (key: string) => {
+    const v = formData.get(key);
+    return v === null ? undefined : v;
+  };
   const parsed = reservationSchema.safeParse({
     customerName: formData.get("customerName"),
-    customerPhone: formData.get("customerPhone"),
-    customerEmail: formData.get("customerEmail"),
+    customerPhone: optStr("customerPhone"),
+    customerEmail: optStr("customerEmail"),
     date: formData.get("date"),
     startTime: formData.get("startTime"),
     endTime: formData.get("endTime"),
@@ -108,8 +112,8 @@ async function extractForm(formData: FormData): Promise<ParsedForm> {
     platformId: formData.get("platformId"),
     taxInvoice: formData.get("taxInvoice"),
     segmentsJson: formData.get("segmentsJson"),
-    tags: formData.get("tags"),
-    notes: formData.get("notes"),
+    tags: optStr("tags"),
+    notes: optStr("notes"),
   });
   if (!parsed.success) {
     throw new Error(parsed.error.issues.map((i) => i.message).join(", "));
