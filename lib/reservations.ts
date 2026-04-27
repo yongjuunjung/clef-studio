@@ -668,25 +668,32 @@ export async function removeLatestReservationExtension(reservationId: number) {
   revalidatePath("/revenue");
 }
 
-export async function setTaxInvoiceIssued(
+export async function setTaxInvoiceStatus(
   reservationId: number,
   formData: FormData,
 ) {
   await requireAuth();
-  const raw = formData.get("issued");
-  const issued = raw === "on" || raw === "true" || raw === "1";
+  const raw = formData.get("status");
+  if (raw !== "not_issued" && raw !== "in_progress" && raw !== "issued") {
+    throw new Error("올바르지 않은 세금계산서 상태입니다");
+  }
+  const status = raw;
 
   const r = await getReservation(reservationId);
   if (!r) throw new Error("예약을 찾을 수 없습니다");
-  if (!r.taxInvoice && issued) {
+  if (!r.taxInvoice && status !== "not_issued") {
     throw new Error("세금계산서 발행 대상이 아닌 예약입니다");
   }
 
+  const issued = status === "issued";
   await db
     .update(reservations)
     .set({
+      taxInvoiceStatus: status,
       taxInvoiceIssued: issued,
-      taxInvoiceIssuedAt: issued ? new Date() : null,
+      taxInvoiceIssuedAt: issued
+        ? r.taxInvoiceIssuedAt ?? new Date()
+        : null,
       updatedAt: new Date(),
     })
     .where(eq(reservations.id, reservationId));

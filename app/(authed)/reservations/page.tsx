@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Copy, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +22,10 @@ import { fromZonedTime } from "date-fns-tz";
 import { InlineStatusButton } from "@/components/inline-status-button";
 import { Pagination } from "@/components/pagination";
 import {
+  resolveTaxInvoiceStatus,
+  TaxInvoiceStatusBadge,
+} from "@/components/tax-invoice-status-badge";
+import {
   cancelReservation,
   getAllTags,
   listReservations,
@@ -30,9 +34,7 @@ import {
 } from "@/lib/reservations";
 import { peopleLabel } from "@/lib/reservations-helpers";
 import {
-  durationHours,
-  fmtDateTime,
-  formatDurationHours,
+  fmtDateTimeCompact,
   formatKRW,
   TZ,
 } from "@/lib/tz";
@@ -252,28 +254,19 @@ export default async function ReservationsPage({
                               {r.customerName}
                             </Link>
                             {r.taxInvoice ? (
-                              r.taxInvoiceIssued ? (
-                                <Badge className="text-[10px] bg-emerald-600 hover:bg-emerald-600">
-                                  계산서 발급
-                                </Badge>
-                              ) : (
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] border-amber-500 text-amber-700"
-                                >
-                                  계산서 미발급
-                                </Badge>
-                              )
+                              <TaxInvoiceStatusBadge
+                                status={resolveTaxInvoiceStatus(
+                                  r.taxInvoiceStatus,
+                                  r.taxInvoiceIssued,
+                                )}
+                              />
                             ) : null}
                           </div>
                           <div
                             className={`text-xs text-muted-foreground font-mono mt-1 ${cancelled ? "line-through" : ""}`}
                           >
-                            {fmtDateTime(r.startAt)} ·{" "}
-                            {formatDurationHours(
-                              durationHours(r.startAt, r.endAt),
-                            )}{" "}
-                            · {peopleLabel(r.peopleSegments)}
+                            {fmtDateTimeCompact(r.startAt, r.endAt)} ·{" "}
+                            {peopleLabel(r.peopleSegments)}
                           </div>
                           {r.tags.length > 0 ? (
                             <div className="flex flex-wrap gap-1 mt-2">
@@ -295,7 +288,21 @@ export default async function ReservationsPage({
                           >
                             {formatKRW(r.totalAmount)}
                           </div>
-                          <div className="mt-2">
+                          <div className="mt-2 flex items-center gap-1 justify-end">
+                            <Link
+                              href={`/reservations/new?copyFrom=${r.id}`}
+                              aria-label="이 예약 복사"
+                            >
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                title="복사"
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
+                            </Link>
                             {cancelled ? (
                               <InlineStatusButton
                                 action={restoreAction}
@@ -325,7 +332,6 @@ export default async function ReservationsPage({
                       <TableHead>상태</TableHead>
                       <TableHead>일시</TableHead>
                       <TableHead>예약자</TableHead>
-                      <TableHead>시간</TableHead>
                       <TableHead>인원</TableHead>
                       <TableHead>태그</TableHead>
                       <TableHead className="text-right">금액</TableHead>
@@ -357,18 +363,12 @@ export default async function ReservationsPage({
                                 </Badge>
                               )}
                               {r.taxInvoice ? (
-                                r.taxInvoiceIssued ? (
-                                  <Badge className="text-[10px] bg-emerald-600 hover:bg-emerald-600">
-                                    계산서 발급
-                                  </Badge>
-                                ) : (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[10px] border-amber-500 text-amber-700"
-                                  >
-                                    계산서 미발급
-                                  </Badge>
-                                )
+                                <TaxInvoiceStatusBadge
+                                  status={resolveTaxInvoiceStatus(
+                                    r.taxInvoiceStatus,
+                                    r.taxInvoiceIssued,
+                                  )}
+                                />
                               ) : null}
                             </div>
                           </TableCell>
@@ -379,7 +379,7 @@ export default async function ReservationsPage({
                               href={`/reservations/${r.id}`}
                               className="hover:underline"
                             >
-                              {fmtDateTime(r.startAt)}
+                              {fmtDateTimeCompact(r.startAt, r.endAt)}
                             </Link>
                           </TableCell>
                           <TableCell
@@ -393,15 +393,6 @@ export default async function ReservationsPage({
                             >
                               {r.customerName}
                             </Link>
-                          </TableCell>
-                          <TableCell
-                            className={
-                              cancelled ? "opacity-50 line-through" : ""
-                            }
-                          >
-                            {formatDurationHours(
-                              durationHours(r.startAt, r.endAt),
-                            )}
                           </TableCell>
                           <TableCell
                             className={
@@ -433,19 +424,35 @@ export default async function ReservationsPage({
                             {formatKRW(r.totalAmount)}
                           </TableCell>
                           <TableCell className="text-right">
-                            {cancelled ? (
-                              <InlineStatusButton
-                                action={restoreAction}
-                                variant="restore"
-                              />
-                            ) : (
-                              <InlineStatusButton
-                                action={cancelAction}
-                                variant="cancel"
-                                reservationStartAt={r.startAt}
-                                totalAmount={r.totalAmount}
-                              />
-                            )}
+                            <div className="inline-flex items-center gap-1 justify-end">
+                              <Link
+                                href={`/reservations/new?copyFrom=${r.id}`}
+                                aria-label="이 예약 복사"
+                              >
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  title="복사"
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                              </Link>
+                              {cancelled ? (
+                                <InlineStatusButton
+                                  action={restoreAction}
+                                  variant="restore"
+                                />
+                              ) : (
+                                <InlineStatusButton
+                                  action={cancelAction}
+                                  variant="cancel"
+                                  reservationStartAt={r.startAt}
+                                  totalAmount={r.totalAmount}
+                                />
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       );

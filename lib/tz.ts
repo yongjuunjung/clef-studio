@@ -28,6 +28,29 @@ export function fmtTimeRange(start: Date, end: Date): string {
   return `${formatInTimeZone(start, TZ, "HH:mm")} – ${formatInTimeZone(end, TZ, "HH:mm")}`;
 }
 
+/** 26.04.27 10:00 - 12:00 형식의 간소 일시 표기 */
+export function fmtDateTimeCompact(start: Date, end: Date): string {
+  const datePart = formatInTimeZone(start, TZ, "yy.MM.dd");
+  const startTime = formatInTimeZone(start, TZ, "HH:mm");
+  const endTime = formatInTimeZone(end, TZ, "HH:mm");
+  return `${datePart} ${startTime}-${endTime}`;
+}
+
+/**
+ * 시작/종료 시간을 시간 단위로 간소화. 30분 단위는 0.5로, 그 외는 H:mm 으로.
+ * 예: 10-12, 10.5-12.5, 9:15-10:15
+ */
+export function fmtHourRangeCompact(start: Date, end: Date): string {
+  const fmt = (d: Date) => {
+    const h = Number(formatInTimeZone(d, TZ, "H"));
+    const m = Number(formatInTimeZone(d, TZ, "m"));
+    if (m === 0) return String(h);
+    if (m === 30) return `${h}.5`;
+    return `${h}:${String(m).padStart(2, "0")}`;
+  };
+  return `${fmt(start)}-${fmt(end)}`;
+}
+
 export function durationHours(start: Date, end: Date): number {
   const ms = end.getTime() - start.getTime();
   return ms / (60 * 60 * 1000);

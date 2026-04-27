@@ -38,6 +38,9 @@ export const reservations = pgTable("clef_reservations", {
     withTimezone: true,
     mode: "date",
   }),
+  taxInvoiceStatus: varchar("tax_invoice_status", { length: 20 })
+    .notNull()
+    .default("not_issued"),
   platformId: integer("platform_id").references(() => platforms.id, {
     onDelete: "set null",
   }),

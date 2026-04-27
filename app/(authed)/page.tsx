@@ -15,6 +15,7 @@ import {
 import { peopleLabel } from "@/lib/reservations-helpers";
 import {
   dayRange,
+  fmtHourRangeCompact,
   fmtTimeRange,
   formatKRW,
   shiftDateKey,
@@ -411,7 +412,7 @@ async function WeekView({
                       }`}
                     >
                       <div className="font-mono text-[9px] sm:text-[10px]">
-                        {formatInTimeZone(r.startAt, TZ, "HH:mm")}
+                        {fmtHourRangeCompact(r.startAt, r.endAt)}
                       </div>
                       <div className="truncate font-medium">
                         {r.customerName}
@@ -556,7 +557,7 @@ async function MonthView({
                         }`}
                       >
                         <span className="hidden sm:inline font-mono">
-                          {formatInTimeZone(r.startAt, TZ, "HH:mm")}{" "}
+                          {fmtHourRangeCompact(r.startAt, r.endAt)}{" "}
                         </span>
                         {r.customerName}
                       </Link>

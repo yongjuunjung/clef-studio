@@ -1,5 +1,8 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Copy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -13,7 +16,11 @@ import { CommissionEditor } from "@/components/commission-editor";
 import { PlatformBadge } from "@/components/platform-badge";
 import { ReservationExtensionForm } from "@/components/reservation-extension-form";
 import { RemoveExtensionButton } from "@/components/remove-extension-button";
-import { TaxInvoiceIssuedToggle } from "@/components/tax-invoice-issued-toggle";
+import { TaxInvoiceStatusControl } from "@/components/tax-invoice-status-control";
+import {
+  resolveTaxInvoiceStatus,
+  TaxInvoiceStatusBadge,
+} from "@/components/tax-invoice-status-badge";
 import {
   CancelReservationButton,
   RestoreReservationButton,
@@ -22,10 +29,11 @@ import {
   addReservationExtension,
   cancelReservation,
   deleteReservation,
+  getAllTags,
   getReservation,
   removeLatestReservationExtension,
   restoreReservation,
-  setTaxInvoiceIssued,
+  setTaxInvoiceStatus,
   updateCommissionAmount,
   updateRefundAmount,
   updateReservation,
@@ -59,7 +67,11 @@ export default async function ReservationDetailPage({
   const reservation = await getReservation(numericId);
   if (!reservation) notFound();
 
-  const [s, platforms] = await Promise.all([getSettings(), listPlatforms()]);
+  const [s, platforms, knownTags] = await Promise.all([
+    getSettings(),
+    listPlatforms(),
+    getAllTags(),
+  ]);
   const startInputs = toLocalDateTimeInputs(reservation.startAt);
   const endInputs = toLocalDateTimeInputs(reservation.endAt);
   const hours = durationHours(reservation.startAt, reservation.endAt);
@@ -102,7 +114,11 @@ export default async function ReservationDetailPage({
     null,
     reservation.id,
   );
-  const taxInvoiceIssuedAction = setTaxInvoiceIssued.bind(null, reservation.id);
+  const taxInvoiceStatusAction = setTaxInvoiceStatus.bind(null, reservation.id);
+  const taxInvoiceCurrentStatus = resolveTaxInvoiceStatus(
+    reservation.taxInvoiceStatus,
+    reservation.taxInvoiceIssued,
+  );
 
   const lastSegmentPeople =
     reservation.peopleSegments.length > 0
@@ -153,18 +169,7 @@ export default async function ReservationDetailPage({
                 <PlatformBadge name={reservation.platform.name} />
               ) : null}
               {reservation.taxInvoice ? (
-                reservation.taxInvoiceIssued ? (
-                  <Badge className="text-[10px] bg-emerald-600 hover:bg-emerald-600">
-                    세금계산서 발급
-                  </Badge>
-                ) : (
-                  <Badge
-                    variant="outline"
-                    className="text-[10px] border-amber-500 text-amber-700"
-                  >
-                    세금계산서 미발급
-                  </Badge>
-                )
+                <TaxInvoiceStatusBadge status={taxInvoiceCurrentStatus} />
               ) : null}
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
@@ -185,13 +190,19 @@ export default async function ReservationDetailPage({
               ) : null}
             </div>
           </div>
-          <div className="text-right">
+          <div className="text-right space-y-2">
             <div className="text-2xl font-semibold">
               {formatKRW(reservation.totalAmount)}
             </div>
-            <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
+            <div className="text-xs text-muted-foreground space-y-0.5">
               <div>인원 {peopleLabel(reservation.peopleSegments)}</div>
             </div>
+            <Link href={`/reservations/new?copyFrom=${reservation.id}`}>
+              <Button type="button" variant="outline" size="sm" className="gap-1.5">
+                <Copy className="h-3.5 w-3.5" />
+                복사하여 새 예약
+              </Button>
+            </Link>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -377,16 +388,19 @@ export default async function ReservationDetailPage({
               <Separator />
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="space-y-1">
-                  <div className="text-sm font-medium">세금계산서</div>
+                  <div className="text-sm font-medium">세금계산서 상태</div>
                   <div className="text-xs text-muted-foreground">
-                    {reservation.taxInvoiceIssued && reservation.taxInvoiceIssuedAt
+                    {taxInvoiceCurrentStatus === "issued" &&
+                    reservation.taxInvoiceIssuedAt
                       ? `${fmtDateTime(reservation.taxInvoiceIssuedAt)}에 발급됨`
-                      : "발급 후 버튼을 눌러 상태를 갱신하세요"}
+                      : taxInvoiceCurrentStatus === "in_progress"
+                        ? "현재 발행 진행 중입니다"
+                        : "미발행 / 진행중 / 발행완료 중에서 선택하세요"}
                   </div>
                 </div>
-                <TaxInvoiceIssuedToggle
-                  action={taxInvoiceIssuedAction}
-                  initialIssued={reservation.taxInvoiceIssued}
+                <TaxInvoiceStatusControl
+                  action={taxInvoiceStatusAction}
+                  initialStatus={taxInvoiceCurrentStatus}
                 />
               </div>
             </>
@@ -423,6 +437,7 @@ export default async function ReservationDetailPage({
               commissionRatePct: p.commissionRatePct,
               taxInvoiceRequired: p.taxInvoiceRequired,
             }))}
+            knownTags={knownTags}
             defaultValues={{
               customerName: reservation.customerName,
               customerPhone: reservation.customerPhone,

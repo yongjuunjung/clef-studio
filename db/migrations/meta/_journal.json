@@ -99,6 +99,13 @@
       "when": 1777042000000,
       "tag": "0013_tax_invoice_issued",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1777043000000,
+      "tag": "0014_tax_invoice_status",
+      "breakpoints": true
     }
   ]
 }

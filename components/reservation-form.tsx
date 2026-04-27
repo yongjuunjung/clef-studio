@@ -45,8 +45,9 @@ function timeToMinutes(t: string): number {
 }
 
 function minutesToTime(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
+  const safe = Math.max(0, Math.min(24 * 60, min));
+  const h = Math.floor(safe / 60);
+  const m = safe % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
@@ -59,6 +60,17 @@ function splitDayNight(startMin: number, endMin: number) {
   return { dayMin, nightMin: total - dayMin };
 }
 
+function formatPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 11);
+  if (digits.length === 0) return "";
+  if (digits.length < 4) return digits;
+  if (digits.length < 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  if (digits.length <= 10) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+}
+
 export function ReservationForm({
   action,
   defaultValues = {},
@@ -68,6 +80,7 @@ export function ReservationForm({
   extraPerPersonHourlyRate,
   minBookingHours,
   platforms,
+  knownTags = [],
   submitLabel = "저장",
 }: {
   action: (formData: FormData) => Promise<void>;
@@ -78,6 +91,7 @@ export function ReservationForm({
   extraPerPersonHourlyRate: number;
   minBookingHours: number;
   platforms: PlatformOption[];
+  knownTags?: string[];
   submitLabel?: string;
 }) {
   const initStart = defaultValues.startTime ?? "10:00";
@@ -98,6 +112,12 @@ export function ReservationForm({
   );
   const [platformId, setPlatformId] = useState<string>(
     defaultValues.platformId ? String(defaultValues.platformId) : "",
+  );
+  const [phone, setPhone] = useState<string>(
+    formatPhone(defaultValues.customerPhone ?? ""),
+  );
+  const [tagsInput, setTagsInput] = useState<string>(
+    defaultValues.tags ?? "",
   );
   const selectedPlatform = platforms.find(
     (p) => String(p.id) === platformId,
@@ -122,7 +142,7 @@ export function ReservationForm({
   });
   const [pending, startTransition] = useTransition();
 
-  /** 예약 시작/종료 변경 시 세그먼트 1개로 리셋 */
+  /** 예약 시작/종료 변경 시 첫/마지막 세그먼트 경계 동기화 */
   useEffect(() => {
     setSegments((prev) => {
       if (prev.length === 0) {
@@ -135,6 +155,34 @@ export function ReservationForm({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startTime, endTime]);
+
+  /** 시작 시간 변경 시 종료 시간을 기본 minBookingHours 뒤로 자동 설정 */
+  function handleStartChange(value: string) {
+    setStartTime(value);
+    const nextEnd = minutesToTime(
+      timeToMinutes(value) + minBookingHours * 60,
+    );
+    setEndTime(nextEnd);
+  }
+
+  function handleEndChange(value: string) {
+    setEndTime(value);
+  }
+
+  function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setPhone(formatPhone(e.target.value));
+  }
+
+  /** 텍스트 input 안에서 Enter 누르면 폼 제출되지 않도록 차단 */
+  function handleKeyDown(e: React.KeyboardEvent<HTMLFormElement>) {
+    if (e.key !== "Enter") return;
+    const target = e.target as HTMLElement;
+    const tag = target.tagName;
+    const type = (target as HTMLInputElement).type;
+    if (tag === "TEXTAREA") return;
+    if (tag === "BUTTON" && type === "submit") return;
+    e.preventDefault();
+  }
 
   const startMin = timeToMinutes(startTime);
   const endMin = timeToMinutes(endTime);
@@ -223,33 +271,31 @@ export function ReservationForm({
     });
   }
 
+  /** 인원 구간 추가: 현재 종료시간 이후로 1시간 연장하며 새 구간 추가 */
   function addSegment() {
-    setSegments((prev) => {
-      if (prev.length === 0) {
-        return [{ startTime, endTime, people: minPeople }];
-      }
-      // 마지막 구간을 절반으로 쪼개어 새 구간 추가
-      const last = prev[prev.length - 1];
-      const lastStart = timeToMinutes(last.startTime);
-      const lastEnd = timeToMinutes(last.endTime);
-      if (lastEnd - lastStart < 2 * 60) {
-        toast.error("더 쪼갤 수 없습니다. 마지막 구간을 2시간 이상으로 만들어 주세요.");
-        return prev;
-      }
-      const mid = Math.floor((lastStart + lastEnd) / 120) * 60;
-      const splitAt = mid > lastStart && mid < lastEnd ? mid : lastStart + 60;
-      const next = [...prev];
-      next[next.length - 1] = {
-        ...last,
-        endTime: minutesToTime(splitAt),
-      };
-      next.push({
-        startTime: minutesToTime(splitAt),
-        endTime: last.endTime,
-        people: last.people,
-      });
-      return next;
-    });
+    const lastEndMin = segments.length
+      ? timeToMinutes(segments[segments.length - 1].endTime)
+      : endMin;
+    const proposedEndMin = Math.min(24 * 60, lastEndMin + 60);
+    if (proposedEndMin <= lastEndMin) {
+      toast.error("종료 시간이 24시를 넘을 수 없습니다");
+      return;
+    }
+    const totalAfter = (proposedEndMin - startMin) / 60;
+    if (totalAfter > 24) {
+      toast.error("최대 24시간까지만 예약 가능합니다");
+      return;
+    }
+    const newStart = minutesToTime(lastEndMin);
+    const newEnd = minutesToTime(proposedEndMin);
+    const lastPeople = segments.length
+      ? segments[segments.length - 1].people
+      : minPeople;
+    setSegments((prev) => [
+      ...prev,
+      { startTime: newStart, endTime: newEnd, people: lastPeople },
+    ]);
+    setEndTime(newEnd);
   }
 
   function removeSegment(i: number) {
@@ -258,21 +304,45 @@ export function ReservationForm({
       const removed = prev[i];
       const next = prev.filter((_, idx) => idx !== i);
       if (i === 0) {
-        // 첫 구간 제거: 다음 구간이 시작 시간을 받음
         next[0] = { ...next[0], startTime: removed.startTime };
       } else if (i === prev.length - 1) {
-        // 마지막 구간 제거: 이전 구간이 종료 시간을 받음
         next[next.length - 1] = {
           ...next[next.length - 1],
           endTime: removed.endTime,
         };
       } else {
-        // 중간 구간 제거: 이전 구간의 종료를 제거된 구간의 종료로 확장
         next[i - 1] = { ...next[i - 1], endTime: removed.endTime };
       }
       return next;
     });
   }
+
+  /** 태그 추가/제거 */
+  function appendTag(tag: string) {
+    setTagsInput((prev) => {
+      const existing = prev
+        .split(/[,\s]+/)
+        .map((t) => t.trim())
+        .filter(Boolean);
+      if (existing.includes(tag)) return prev;
+      const sep = prev.trim().length > 0 && !prev.trim().endsWith(",") ? ", " : "";
+      return `${prev}${sep}${tag}`;
+    });
+  }
+
+  const currentTagSet = useMemo(() => {
+    return new Set(
+      tagsInput
+        .split(/[,\s]+/)
+        .map((t) => t.trim())
+        .filter(Boolean),
+    );
+  }, [tagsInput]);
+
+  const suggestedTags = useMemo(
+    () => knownTags.filter((t) => !currentTagSet.has(t)),
+    [knownTags, currentTagSet],
+  );
 
   async function handleSubmit(formData: FormData) {
     if (timeErrors.length > 0 || segmentErrors.length > 0) {
@@ -290,7 +360,7 @@ export function ReservationForm({
   }
 
   return (
-    <form action={handleSubmit} className="space-y-5">
+    <form action={handleSubmit} onKeyDown={handleKeyDown} className="space-y-5">
       <input type="hidden" name="segmentsJson" value={segmentsJson} />
       <input type="hidden" name="platformId" value={platformId} />
       <input
@@ -314,20 +384,14 @@ export function ReservationForm({
           <Input
             id="customerPhone"
             name="customerPhone"
-            defaultValue={defaultValues.customerPhone ?? ""}
+            type="tel"
+            inputMode="numeric"
+            value={phone}
+            onChange={handlePhoneChange}
             placeholder="010-0000-0000"
+            maxLength={13}
           />
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="customerEmail">이메일</Label>
-        <Input
-          id="customerEmail"
-          name="customerEmail"
-          type="email"
-          defaultValue={defaultValues.customerEmail ?? ""}
-        />
       </div>
 
       <div className="grid md:grid-cols-3 gap-4">
@@ -349,7 +413,7 @@ export function ReservationForm({
             type="time"
             step={3600}
             value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
+            onChange={(e) => handleStartChange(e.target.value)}
             required
           />
         </div>
@@ -361,7 +425,7 @@ export function ReservationForm({
             type="time"
             step={3600}
             value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
+            onChange={(e) => handleEndChange(e.target.value)}
             required
           />
           {timeErrors.length > 0 ? (
@@ -510,9 +574,35 @@ export function ReservationForm({
         <Input
           id="tags"
           name="tags"
-          defaultValue={defaultValues.tags ?? ""}
+          value={tagsInput}
+          onChange={(e) => setTagsInput(e.target.value)}
           placeholder="촬영, 단골, 영상"
+          list="reservation-tags-suggestions"
+          autoComplete="off"
         />
+        {knownTags.length > 0 ? (
+          <datalist id="reservation-tags-suggestions">
+            {knownTags.map((t) => (
+              <option key={t} value={t} />
+            ))}
+          </datalist>
+        ) : null}
+        {suggestedTags.length > 0 ? (
+          <div className="flex flex-wrap gap-1 pt-1">
+            {suggestedTags.slice(0, 15).map((t) => (
+              <Button
+                key={t}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-6 px-2 text-[11px]"
+                onClick={() => appendTag(t)}
+              >
+                + {t}
+              </Button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <div className="space-y-2">
@@ -536,6 +626,52 @@ export function ReservationForm({
         </Button>
       </div>
     </form>
+  );
+}
+
+function PeopleNumberInput({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+}) {
+  const [text, setText] = useState<string>(String(value));
+
+  useEffect(() => {
+    setText((prev) => {
+      const n = prev === "" ? 0 : Number(prev);
+      if (Number.isFinite(n) && n === value) return prev;
+      return String(value);
+    });
+  }, [value]);
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.value.replace(/\D/g, "");
+    const trimmed = raw.replace(/^0+(?=\d)/, "");
+    setText(trimmed);
+    const num = trimmed === "" ? 0 : Number(trimmed);
+    onChange(num);
+  }
+
+  function handleBlur() {
+    if (text === "" || Number(text) < 1) {
+      setText("1");
+      onChange(1);
+    }
+  }
+
+  return (
+    <Input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      value={text}
+      onFocus={(e) => e.currentTarget.select()}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      className="w-24"
+    />
   );
 }
 
@@ -593,16 +729,21 @@ function SegmentRow({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          <Input
-            type="number"
-            min={1}
+          <PeopleNumberInput
             value={segment.people}
-            onChange={(e) => onChange({ people: Number(e.target.value) || 0 })}
-            className="w-24"
+            onChange={(n) => onChange({ people: n })}
           />
           <span className="text-sm text-muted-foreground whitespace-nowrap">
             명
           </span>
+          {extraPeople > 0 ? (
+            <Badge
+              variant="outline"
+              className="text-[10px] whitespace-nowrap border-emerald-500 text-emerald-700"
+            >
+              +{extraPeople}명 추가
+            </Badge>
+          ) : null}
         </div>
 
         {canRemove ? (
